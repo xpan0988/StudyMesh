@@ -47,7 +47,7 @@ Notes:
 - A correctly configured Supabase schema and policies are required.
 
 ## Deployment
-Live demo: https://pt-1-alpha.vercel.app/
+Live demo: https://study-mesh.vercel.app/
 
 StudyMesh is deployed as a static web app on Vercel. No build step is required.
 
