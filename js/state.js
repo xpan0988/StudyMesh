@@ -1,0 +1,37 @@
+// Global app state
+const state = {
+      currentUser: null,
+      currentGroup: null,
+      currentMembership: null,
+      currentProfile: null,
+      isAuthBootstrapping: true,
+      isAuthActionPending: false,
+      hasResolvedMembership: false,
+      groupMode: 'create',
+      members: [],
+      availabilityBlocks: [],
+      openScheduleSections: {},
+      currentView: 'dashboard',
+      messages: [],
+      tasks: [],
+      resources: [],
+      alerts: [],
+      editingTaskId: null,
+      contributions: [],
+      memberIndexByDbId: new Map(),
+      memberByDbId: new Map(),
+      isHydratingInitialData: false,
+      hasRenderedSchedule: false,
+      groupPolling: {
+        activeGroupId: null,
+        timers: {},
+        inFlight: {}
+      },
+      // MVP E2EE caches
+      groupContentKeys: {},
+      groupEnvelopeBackfillInFlight: {},
+      groupEnvelopeBackfillLastRunAt: {},
+      userKeypairReady: false,
+      userKeypair: null,
+      e2eeInitWarning: '',
+    };

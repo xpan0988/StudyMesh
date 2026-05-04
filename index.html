@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudyMesh — Student Group Board</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- =========================
+       Styles
+       Temporary: keep CSS here during phase 1 cleanup.
+       Later this whole block will move to styles.css
+       ========================= -->
+    <link rel="stylesheet" href="./styles.css" />
+
+</head>
+<body>
+  <!-- =========================
+       App Layout
+       header + sidebar + main views + chat panel
+       ========================= -->
+  <header id="appHeader">
+    <div class="logo">Study<span>Mesh</span></div>
+    <div class="header-right">
+      <div class="project-tag" id="headerGroupTag">Student Group Board</div>
+      <button class="btn btn-secondary btn-small" onclick="restartGroupFlow()">Restart Group Flow</button>
+      <button class="btn btn-secondary btn-small" onclick="signOut()">Sign Out</button>
+      <div class="member-avatars" id="memberAvatars"></div>
+    </div>
+  </header>
+
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar">
+      <div class="side-group">
+        <div class="side-label">Navigation</div>
+
+        <div class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
+          <div class="nav-icon">🏠</div>
+          <div class="nav-copy">
+            <div class="nav-title">Dashboard</div>
+            <div class="nav-sub">Alerts, progress, reminders</div>
+          </div>
+        </div>
+
+        <div class="nav-item" data-view="tasks" onclick="switchView('tasks')">
+          <div class="nav-icon">✅</div>
+          <div class="nav-copy">
+            <div class="nav-title">Tasks</div>
+            <div class="nav-sub">Task board and due dates</div>
+          </div>
+        </div>
+
+        <div class="nav-item" data-view="timetable" onclick="switchView('timetable')">
+          <div class="nav-icon">🗓️</div>
+          <div class="nav-copy">
+            <div class="nav-title">Timetable</div>
+            <div class="nav-sub">Weekly availability</div>
+          </div>
+        </div>
+
+        <div class="nav-item" data-view="resources" onclick="switchView('resources')">
+          <div class="nav-icon">📁</div>
+          <div class="nav-copy">
+            <div class="nav-title">Resources</div>
+            <div class="nav-sub">Shared files and uploads</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-summary card">
+        <h4>Design focus</h4>
+        <p>StudyMesh prioritises deadlines, acknowledgement, shared availability, and transparent contribution for student group work.</p>
+      </div>
+    </aside>
+
+    <!-- =========================
+         Main Views
+         dashboard / tasks / timetable / resources
+         ========================= -->
+    <main class="main-area">
+      <section class="view active" id="view-dashboard">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Dashboard</div>
+            <div class="section-subtitle">Latest alerts, upcoming deadlines, contribution tracking, and team status in one place.</div>
+          </div>
+          <div class="muted-chip" id="dashboardStatusChip">Project overview</div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="stack">
+            <div class="alerts-card card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Alert Notice Board</div>
+                  <div class="card-subtitle">Shows all alerts in newest-first order so recent items stay visible.</div>
+                </div>
+                <div class="muted-chip" id="alertSummaryChip">0 alerts</div>
+              </div>
+              <div class="alerts-scroll" id="alertsScroller"></div>
+            </div>
+
+            <div class="upcoming-card card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Nearest Due Date Reminder</div>
+                  <div class="card-subtitle">The closest unfinished task is surfaced here to keep the team aligned.</div>
+                </div>
+              </div>
+              <div id="nearestDueWrap"></div>
+            </div>
+
+            <div class="upcoming-card card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Best Meeting Time</div>
+                  <div class="card-subtitle">Top recommended slot based on current team availability.</div>
+                </div>
+              </div>
+              <div id="dashboardMeetingRecommendation"></div>
+            </div>
+
+            <div class="progress-card card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Team Contributions</div>
+                  <div class="card-subtitle">Track completed tasks, uploaded files, and each member's share of the work.</div>
+                </div>
+              </div>
+
+              <div class="progress-layout">
+                <div>
+                  <div class="progress-metrics">
+                    <div class="metric-box">
+                      <div class="metric-label">Completed Tasks</div>
+                      <div class="metric-value" id="metricCompleted">0</div>
+                    </div>
+                    <div class="metric-box">
+                      <div class="metric-label">Uploaded Files</div>
+                      <div class="metric-value" id="metricFiles">0</div>
+                    </div>
+                    <div class="metric-box">
+                      <div class="metric-label">Contribution Units</div>
+                      <div class="metric-value" id="metricUnits">0</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="member-progress-list" id="memberProgressList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-tasks">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Task Board</div>
+            <div class="section-subtitle">Create tasks, assign owners, set custom due dates, track in-progress work, and record completions.</div>
+          </div>
+          <div class="muted-chip" id="tasksStatusChip">0 tasks</div>
+        </div>
+
+        <div class="tasks-layout">
+          <div class="task-form-card card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Add New Task</div>
+                <div class="card-subtitle">Set a title, assign a member, and define a due date.</div>
+              </div>
+            </div>
+
+            <div class="task-form">
+              <div>
+                <div class="field-label">Task Title</div>
+                <input type="text" id="taskInput" placeholder="e.g. Design survey questions">
+              </div>
+
+                            <div class="field-row-3">
+                <div>
+                  <div class="field-label">Assigned To</div>
+                  <select id="taskAssignee"></select>
+                </div>
+                <div>
+                  <div class="field-label">Priority</div>
+                  <select id="taskPriority">
+                    <option value="High">High</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="field-label">Due Date</div>
+                  <input type="text" id="taskDueDate" placeholder="YYYY-MM-DD" inputmode="numeric" autocomplete="off" spellcheck="false" aria-describedby="taskDueDateHelp taskDueDateError">
+                  <div class="field-helper" id="taskDueDateHelp">Use ISO format: YYYY-MM-DD</div>
+                  <div class="field-error" id="taskDueDateError" aria-live="polite"></div>
+                </div>
+              </div>
+
+              <button class="btn btn-primary" onclick="addTask()">Add Task</button>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="list-card card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">In Progress Tasks</div>
+                  <div class="card-subtitle">Active tasks that are not yet complete.</div>
+                </div>
+              </div>
+              <div class="task-list" id="inProgressTasks"></div>
+            </div>
+
+            <div class="list-card card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Completed Tasks</div>
+                  <div class="card-subtitle">Tasks that have already been finished by the team.</div>
+                </div>
+              </div>
+              <div class="task-list" id="completedTasks"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-timetable">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Weekly Timetable</div>
+            <div class="section-subtitle">Current week availability from Monday to Friday for planning team meetings and coordination windows.</div>
+          </div>
+          <div class="muted-chip">Mon–Sun · 2-hour blocks</div>
+        </div>
+
+        <div class="timetable-card card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">This Week</div>
+              <div class="card-subtitle">Each day is divided into fixed 2-hour blocks. Selected blocks are loaded from the shared group availability table.</div>
+            </div>
+          </div>
+
+          <div class="resource-list" id="meetingRecommendationsWrap"></div>
+          <div class="schedule-grid-scroll">
+            <div class="schedule-grid" id="scheduleGrid"></div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="view" id="view-resources">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Resources</div>
+            <div class="section-subtitle">All shared files are listed here with file name, uploader, upload time, and file type.</div>
+          </div>
+          <div class="muted-chip" id="resourcesStatusChip">0 files</div>
+        </div>
+
+        <div class="resources-layout">
+
+          <div class="resource-card card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Shared Resources</div>
+                <div class="card-subtitle">Files uploaded by the team through chat are listed here in chronological order.</div>
+              </div>
+            </div>
+                        <div class="resource-toolbar">
+              <div class="resource-filters">
+                <select id="resourceTypeFilter" onchange="renderResources()">
+                  <option value="all">All Types</option>
+                </select>
+                <input type="text" id="resourceSearchInput" placeholder="Search file name..." oninput="renderResources()">
+              </div>
+              <button class="btn btn-secondary" onclick="resetResourceFilters()">Clear Filters</button>
+            </div>
+            <div class="resource-list" id="resourceList"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- =========================
+         Chat Panel
+         messages + composers + send controls
+         ========================= -->
+    <aside class="chat-panel">
+      <div class="chat-header">
+        <div class="chat-title">Chat</div>
+        <div class="chat-subtitle">Daily discussion happens here. The plus menu expands to create alerts or upload files.</div>
+      </div>
+
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <div class="chat-input-area">
+        <div class="composer-panel" id="alertComposer">
+          <div class="composer-note">Create an alert message. Alerts appear in chat and on the dashboard notice board. Other members must manually mark them as read.</div>
+          <input class="chat-input" id="alertInput" type="text" placeholder="Type alert content…">
+          <div class="panel-actions">
+            <button class="btn btn-secondary" onclick="closeComposerPanels()">Cancel</button>
+            <button class="btn btn-warning" onclick="createAlert()">Send Alert</button>
+          </div>
+        </div>
+
+        <div class="composer-panel" id="uploadComposer">
+          <div class="composer-note">Upload a file resource. The file will appear in chat and in the Resources page, and counts toward contribution progress.</div>
+          <input type="file" id="chatFileInput" onchange="handleChatFileInput(event)">
+          <div class="panel-actions">
+            <button class="btn btn-secondary" onclick="closeComposerPanels()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="chat-compose">
+          <input class="chat-input" id="chatInput" type="text" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMessage()">
+          <div class="plus-menu-wrap">
+            <button class="plus-btn" onclick="togglePlusMenu(event)">+</button>
+            <div class="plus-menu" id="plusMenu">
+              <button class="menu-item" onclick="openAlertComposer()">🚨 Create Alert</button>
+              <button class="menu-item" onclick="openUploadComposer()">📁 Upload File</button>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-card">
+      <div>
+        <div class="modal-title">StudyMesh Sign In</div>
+        <div class="modal-subtitle">Sign in with your email and password to access your group workspace.</div>
+      </div>
+      <div>
+        <div class="field-label">Email</div>
+        <input type="email" id="authEmailInput" placeholder="you@example.com">
+      </div>
+      <div>
+        <div class="field-label">Password</div>
+        <input type="password" id="authPasswordInput" placeholder="At least 6 characters">
+      </div>
+      <div class="modal-error open" id="authStatusMessage"></div>
+      <div class="panel-actions">
+        <button class="btn btn-secondary" onclick="handleEmailSignIn()">Sign In</button>
+        <button class="btn btn-primary" onclick="handleEmailSignUp()">Sign Up</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================
+       Onboarding / Group Modal
+       create group / join group flow
+       ========================= -->
+  <div class="modal-overlay" id="groupModal">
+    <div class="modal-card">
+      <div>
+        <div class="modal-title">Welcome to StudyMesh</div>
+        <div class="modal-subtitle">Enter your name, then create a new group or join an existing one. Group access is controlled by a group name and a 6-digit password.</div>
+      </div>
+
+      <div class="segmented-toggle">
+        <button class="segmented-btn active" id="createModeBtn" onclick="setGroupMode('create')">Create Group</button>
+        <button class="segmented-btn" id="joinModeBtn" onclick="setGroupMode('join')">Join Group</button>
+      </div>
+
+      <div>
+        <div class="field-label">Your Name</div>
+        <input type="text" id="groupUserName" placeholder="e.g. Someone">
+      </div>
+
+      <div class="modal-grid">
+        <div>
+          <div class="field-label">Group Name</div>
+          <input type="text" id="groupNameInput" placeholder="e.g. INFO2222 Team number">
+        </div>
+        <div>
+          <div class="field-label">6-Digit Password</div>
+          <input type="text" id="groupPasswordInput" maxlength="6" inputmode="numeric" placeholder="e.g. 123456">
+        </div>
+      </div>
+
+      <div class="modal-helper" id="groupModeHelper">Create a new group. You will become the first member and other people can join with the same group name and password.</div>
+      <div class="modal-error" id="groupModalError"></div>
+
+      <div class="panel-actions">
+        <button class="btn btn-ghost" onclick="restartGroupFlow()">Restart Group Flow</button>
+        <button class="btn btn-primary" id="groupSubmitBtn" onclick="submitGroupFlow()">Create Group</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================
+       App Logic
+       Temporary: keep JS here during phase 1 cleanup.
+       Later this whole block will be split into config/state/api/modules.
+       ========================= -->
+  <script src="./js/config.js"></script>
+  <script src="./js/state.js"></script>
+  <script src="./js/e2ee.js"></script>
+  <script src="./js/api.js"></script>
+  <script src="./js/auth.js"></script>
+  <script src="./js/timetable.js"></script>
+  <script src="./js/chat.js"></script>
+  <script src="./js/alerts.js"></script>
+  <script src="./js/resources.js"></script>
+  <script src="./js/tasks.js"></script>
+  <script src="./js/render.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
